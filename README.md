@@ -2,6 +2,8 @@
 
 A spring-mass physics simulation built around Newton's second law, F = ma. Forces, integrators, collision logic and scenes are separate, swappable pieces.
 
+**Play:** https://newton-sim.shafe.dev
+
 ## In the browser
 
 `public/` is a live JavaScript port of `simulation.py` with the same modular design:
@@ -34,8 +36,17 @@ python simulation.py
 
 An animated matplotlib window shows the masses arranged in a hexagon, with a plot of the total system energy.
 
+## Deploy
+
+Served by a Cloudflare Worker with static assets (`wrangler.jsonc`). Deploy with:
+
+```bash
+npx wrangler deploy
+```
+
 ## Repository contents
 
 - `simulation.py`: the Python implementation and example `main()` function.
 - `requirements.txt`: Python dependencies.
 - `public/`: the browser version (`js/engine.js` physics, `js/scenes.js` presets, `js/render.js` canvas drawing, `js/app.js` interface).
+- `wrangler.jsonc`: Cloudflare Worker config.

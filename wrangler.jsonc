@@ -1,0 +1,9 @@
+// Static-files Worker: serves public/ at newton-sim.shafe.dev
+{
+  "name": "newton-sim",
+  "compatibility_date": "2025-07-15",
+  "assets": { "directory": "./public" },
+  "routes": [
+    { "pattern": "newton-sim.shafe.dev", "custom_domain": true }
+  ]
+}
