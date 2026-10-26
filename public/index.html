@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Newton sim · Shafe</title>
+  <meta name="description" content="A live spring-mass physics sandbox: grab, build, cut and swap integrators. A browser port of a Python simulator built on Newton's laws.">
+  <meta name="theme-color" content="#1E2A5A">
+  <meta property="og:title" content="Newton force law sim">
+  <meta property="og:description" content="Springs, planets, cloth and collisions you can grab, build and break, with an honest energy ledger.">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,400..800&display=swap">
+  <link rel="stylesheet" href="styles.css">
+  <script>
+    // pick the theme before the first paint so dark-mode visitors see no flash
+    try {
+      const t = localStorage.getItem('newton-sim:theme') || 'auto'
+      const dark = t === 'blueprint' || (t === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches)
+      document.documentElement.dataset.theme = dark ? 'dark' : 'light'
+    } catch (e) {}
+  </script>
+  <script type="module" src="js/app.js"></script>
+</head>
+<body>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-grab" viewBox="0 0 24 24"><path d="M8 13V5.5a1.5 1.5 0 0 1 3 0V12m0-6.5V4a1.5 1.5 0 0 1 3 0v8m0-6.5a1.5 1.5 0 0 1 3 0V13m0-5.5a1.5 1.5 0 0 1 3 0V15a6 6 0 0 1-6 6h-1.5a6 6 0 0 1-4.6-2.2L4.4 15a1.6 1.6 0 0 1 2.5-2l1.1 1.3"/></symbol>
+    <symbol id="i-build" viewBox="0 0 24 24"><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="6" r="2.5"/><path d="M8 16l2-1-1-2 2-1-1-2 2-1-1-2 2-1"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><circle cx="12" cy="9" r="5"/><circle cx="12" cy="9" r="1" fill="currentColor"/><path d="M12 14v4M6 21h12M8 21l2-3M12 21l2-3M16 21l2-3"/></symbol>
+    <symbol id="i-snip" viewBox="0 0 24 24"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M8.6 7.6L20 18M8.6 16.4L20 6"/></symbol>
+    <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14L4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3"/></symbol>
+    <symbol id="i-restart" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.4-5.7M4 4v5h5"/></symbol>
+    <symbol id="i-step" viewBox="0 0 24 24"><path d="M6 5l9 7-9 7z" fill="currentColor"/><path d="M18 5v14"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.5v15l12-7.5z" fill="currentColor"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></symbol>
+    <symbol id="i-fit" viewBox="0 0 24 24"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></symbol>
+    <symbol id="i-share" viewBox="0 0 24 24"><path d="M12 3v12M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></symbol>
+    <symbol id="i-panel" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></symbol>
+  </svg>
+
+  <header class="strip">
+    <a class="back" href="https://shafe.dev" aria-label="Back to shafe.dev"><span class="backArrow" aria-hidden="true">←</span><span class="backText"> shafe.dev</span></a>
+    <h1 class="appName">Newton force law sim</h1>
+    <span class="stripSpacer"></span>
+    <button class="stripBtn" id="shareBtn" type="button" aria-label="Share a link to this scene">
+      <svg aria-hidden="true"><use href="#i-share"/></svg><span class="stripLabel">Share</span>
+    </button>
+    <button class="stripBtn" id="themeBtn" type="button" aria-label="Switch theme">
+      <svg aria-hidden="true"><use href="#i-moon"/></svg><span class="stripLabel" id="themeLabel">Blueprint</span>
+    </button>
+    <button class="stripBtn round" id="helpBtn" type="button" aria-label="Help and shortcuts">?</button>
+  </header>
+
+  <main class="card" id="card">
+    <div class="cardHead">
+      <button class="scenePick" id="scenePick" type="button" aria-haspopup="dialog" aria-expanded="false">
+        <span id="sceneTitle">Scene</span><span class="caret" aria-hidden="true">▾</span>
+      </button>
+      <div class="transport">
+        <button class="iconBtn" id="restartBtn" type="button" aria-label="Restart" title="Restart this run (R) · keeps your settings">
+          <svg aria-hidden="true"><use href="#i-restart"/></svg>
+        </button>
+        <button class="iconBtn deskOnly" id="stepBtn" type="button" aria-label="Step once" title="Step 1/60 s (.) · Shift+. steps one Δt">
+          <svg aria-hidden="true"><use href="#i-step"/></svg>
+        </button>
+        <button class="playBtn" id="playBtn" type="button" aria-label="Pause" title="Play / pause (Space)">
+          <svg class="iconPause" aria-hidden="true"><use href="#i-pause"/></svg>
+          <svg class="iconPlay" aria-hidden="true"><use href="#i-play"/></svg>
+          <span id="playLabel">Pause</span>
+        </button>
+        <div class="speedSeg" id="speedSeg" role="radiogroup" aria-label="Speed"></div>
+        <button class="speedChip" id="speedBtn" type="button" aria-label="Speed 1×, click to change" title="Speed (− and =)">1×</button>
+        <button class="iconBtn deskOnly" id="panelBtn" type="button" aria-label="Settings panel" aria-expanded="true" title="Settings panel (\)">
+          <svg aria-hidden="true"><use href="#i-panel"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="cardBody" id="cardBody">
+      <div class="stage" id="stage">
+        <canvas id="sim" tabindex="0" role="img" aria-label="Simulation" aria-describedby="sceneCaption"></canvas>
+        <p class="srOnly" id="sceneCaption"></p>
+
+        <div class="rail" role="toolbar" aria-label="Tools">
+          <button class="tool" data-tool="grab" type="button" aria-pressed="true" title="Grab (V) · drag to fling · tap to inspect"><svg aria-hidden="true"><use href="#i-grab"/></svg><span>Grab</span></button>
+          <button class="tool" data-tool="build" type="button" aria-pressed="false" title="Build (B) · add masses and springs"><svg aria-hidden="true"><use href="#i-build"/></svg><span>Build</span></button>
+          <button class="tool" data-tool="pin" type="button" aria-pressed="false" title="Pin (P) · pin masses in place"><svg aria-hidden="true"><use href="#i-pin"/></svg><span>Pin</span></button>
+          <button class="tool" data-tool="snip" type="button" aria-pressed="false" title="Snip (X) · swipe to cut springs"><svg aria-hidden="true"><use href="#i-snip"/></svg><span>Snip</span></button>
+          <span class="railRule" aria-hidden="true"></span>
+          <button class="tool" id="undoBtn" type="button" title="Undo (Ctrl+Z)" aria-label="Undo" disabled><svg aria-hidden="true"><use href="#i-undo"/></svg><span>Undo</span></button>
+        </div>
+
+        <button class="modeChip" id="modeChip" type="button" hidden aria-label="Back to Grab">
+          <strong id="modeName"></strong><span id="modeHint"></span><span class="modeX" aria-hidden="true">×</span>
+        </button>
+
+        <div class="buildBar" id="buildBar" hidden>
+          <div class="seg" role="radiogroup" aria-label="New mass" data-opt="mass">
+            <span class="segLabel">Mass</span>
+            <button type="button" data-v="0.5">Light</button>
+            <button type="button" data-v="1">Normal</button>
+            <button type="button" data-v="5">Heavy</button>
+          </div>
+          <div class="seg" role="radiogroup" aria-label="New spring" data-opt="spring">
+            <span class="segLabel">Spring</span>
+            <button type="button" data-v="0.25">Soft</button>
+            <button type="button" data-v="1">Normal</button>
+            <button type="button" data-v="4">Stiff</button>
+          </div>
+          <div class="seg" role="radiogroup" aria-label="New charge" data-opt="charge" id="chargeSeg">
+            <span class="segLabel">Charge</span>
+            <button type="button" data-v="-1" aria-label="Negative">−</button>
+            <button type="button" data-v="0" aria-label="None">0</button>
+            <button type="button" data-v="1" aria-label="Positive">+</button>
+          </div>
+          <label class="check"><input type="checkbox" id="buildPinned"> Pinned</label>
+        </div>
+
+        <div class="hud" id="hud">
+          <span class="stamp" id="hudPaused" hidden>Paused</span>
+          <span class="chip deskOnly" id="hudTime"></span>
+          <span class="chip deskOnly" id="hudSolver"></span>
+          <span class="chip warn" id="hudWarn" hidden></span>
+          <span class="chip warn" id="hudLag" hidden></span>
+        </div>
+
+        <div class="keyCard" id="keyCard" hidden>
+          <strong>Spring strain</strong>
+          <div class="ramp" id="keyRamp"></div>
+          <div class="rampLabels"><span>Squashed</span><span>Rest</span><span>Stretched</span></div>
+          <ul id="keyList"></ul>
+        </div>
+        <div class="stageBtns">
+          <button class="pill" id="recenterBtn" type="button" hidden>Masses off-screen · Recenter</button>
+          <button class="keyChip" id="keyBtn" type="button" aria-expanded="false" aria-controls="keyCard">Legend</button>
+          <button class="iconBtn small" id="fitBtn" type="button" aria-label="Fit view" title="Fit view (F)"><svg aria-hidden="true"><use href="#i-fit"/></svg></button>
+        </div>
+        <button class="bigPlay" id="bigPlay" type="button" hidden>
+          <svg aria-hidden="true"><use href="#i-play"/></svg>
+          <span>Press play to start</span>
+        </button>
+
+        <div class="notice" id="blowup" role="alertdialog" aria-labelledby="blowTitle" hidden>
+          <h3 id="blowTitle">The simulation blew up.</h3>
+          <p>Δt was too big for how stiff or fast things got, so the numbers ran away.</p>
+          <div class="noticeBtns">
+            <button type="button" class="btn primary" id="fixSteps">Lower Δt and restart</button>
+            <button type="button" class="btn" id="useVerlet">Use Verlet</button>
+            <button type="button" class="linkBtn" id="blowRestart">Restart</button>
+          </div>
+          <p class="fine">Velocity Verlet with a small Δt is the most stable choice.</p>
+        </div>
+
+        <div class="empty" id="empty" hidden>
+          <h3 id="emptyTitle">Empty sandbox</h3>
+          <p id="emptyText">Pick Build and tap the paper to add a mass.</p>
+          <div class="noticeBtns">
+            <button type="button" class="btn primary" id="emptyBuild">Build</button>
+            <button type="button" class="btn" id="emptyUndo" hidden>Undo</button>
+            <button type="button" class="btn" id="emptyScenes">Choose a scene</button>
+          </div>
+        </div>
+
+        <div class="tip" id="tip" hidden>
+          <p id="tipText"></p>
+          <div class="tipBtns"><button type="button" class="btn small primary" id="tipOk">Got it</button><button type="button" class="linkBtn" id="tipSkip">Skip tips</button></div>
+          <button type="button" class="tipX" id="tipX" aria-label="Dismiss tip">×</button>
+        </div>
+
+        <div class="toast" id="toast" role="status" aria-live="polite" hidden>
+          <span id="toastText"></span><button type="button" id="toastAction" hidden></button>
+        </div>
+      </div>
+
+      <section class="energy" id="energy" aria-label="Energy chart">
+        <div class="energyHead">
+          <h2>Energy</h2>
+          <div class="chartView" role="radiogroup" aria-label="Chart shows" id="chartView"></div>
+          <span class="errChip" id="errChip" title="Total energy now against the start, after subtracting heat lost to damping, drag and collisions and the work your hand did. Only the solver can cause this."></span>
+        </div>
+        <div class="legend" id="legend"></div>
+        <div class="plotWrap"><canvas id="chart" role="img" aria-label="Energy over time"></canvas></div>
+        <p class="energyNote" id="energyNote" hidden></p>
+      </section>
+
+      <aside class="panel" id="panel" aria-label="Settings">
+        <button class="peek" id="peek" type="button" aria-expanded="false" aria-controls="panel">
+          <span class="grip" aria-hidden="true"></span>
+          <canvas class="spark" id="spark" aria-hidden="true"></canvas>
+          <span class="peekE" id="peekE"></span>
+          <span class="peekErr" id="peekErr"></span>
+          <span class="peekOpen"><span id="peekLabel">Settings</span> <span class="peekCaret" aria-hidden="true">▴</span></span>
+        </button>
+        <div class="inspector" id="inspector" hidden></div>
+        <nav class="tabs" role="tablist" aria-label="Settings sections">
+          <button role="tab" type="button" id="tab-scene" data-tab="scene" aria-selected="true" aria-controls="tabBody">Scene</button>
+          <button role="tab" type="button" id="tab-forces" data-tab="forces" aria-selected="false" aria-controls="tabBody">Forces</button>
+          <button role="tab" type="button" id="tab-solver" data-tab="solver" aria-selected="false" aria-controls="tabBody">Solver</button>
+          <button role="tab" type="button" id="tab-view" data-tab="view" aria-selected="false" aria-controls="tabBody">View</button>
+          <button role="tab" type="button" id="tab-chart" data-tab="chart" aria-selected="false" aria-controls="tabBody" class="phoneOnly">Chart</button>
+        </nav>
+        <div class="tabBody" id="tabBody" role="tabpanel"></div>
+        <p class="panelKeys deskOnly">Space play · . step · R restart · 1–5 solvers · ? help</p>
+      </aside>
+    </div>
+  </main>
+
+  <div class="picker" id="picker" role="dialog" aria-modal="true" aria-labelledby="pickerTitle" hidden>
+    <div class="pickerCard">
+      <div class="pickerHead"><h2 id="pickerTitle">Scenes</h2><button type="button" class="iconBtn" id="pickerClose" aria-label="Close">×</button></div>
+      <div class="pickerGrid" id="pickerGrid"></div>
+    </div>
+  </div>
+
+  <div class="modal" id="help" role="dialog" aria-modal="true" aria-labelledby="helpTitle" hidden>
+    <div class="modalCard">
+      <div class="modalHead"><h2 id="helpTitle">How to play with it</h2><button type="button" class="iconBtn" id="helpClose" aria-label="Close">×</button></div>
+      <div class="modalBody">
+        <h3>Gestures</h3>
+        <table class="keys">
+          <tr><th>Action</th><th>Mouse</th><th>Touch</th></tr>
+          <tr><td>Fling a mass</td><td>Grab, then drag a mass</td><td>Drag a mass</td></tr>
+          <tr><td>See its forces</td><td>Click a mass or spring</td><td>Tap it</td></tr>
+          <tr><td>Pan</td><td>Drag empty paper, or right-drag</td><td>Drag empty paper, or two fingers</td></tr>
+          <tr><td>Zoom</td><td>Scroll wheel</td><td>Pinch</td></tr>
+          <tr><td>Add a mass</td><td>Build, click</td><td>Build, tap</td></tr>
+          <tr><td>Throw a new mass</td><td>Build, drag from empty paper</td><td>Same</td></tr>
+          <tr><td>Add a spring</td><td>Build, drag from mass to mass</td><td>Same</td></tr>
+          <tr><td>Pin or unpin</td><td>Pin, click a mass</td><td>Pin, tap a mass</td></tr>
+          <tr><td>Cut springs</td><td>Snip, swipe across them</td><td>Same</td></tr>
+        </table>
+        <h3>Keys</h3>
+        <dl class="keyList">
+          <div><dt>Space</dt><dd>Play / pause</dd></div>
+          <div><dt>.</dt><dd>Step 1/60 s · Shift+. one Δt</dd></div>
+          <div><dt>R</dt><dd>Restart · Shift+R restores the preset</dd></div>
+          <div><dt>V B P X</dt><dd>Grab, Build, Pin, Snip</dd></div>
+          <div><dt>1–5</dt><dd>Switch integrator</dd></div>
+          <div><dt>Ctrl+Z</dt><dd>Undo · Ctrl+Shift+Z redo</dd></div>
+          <div><dt>[ ]</dt><dd>Previous / next scene</dd></div>
+          <div><dt>− =</dt><dd>Slower / faster</dd></div>
+          <div><dt>F</dt><dd>Fit the view</dd></div>
+          <div><dt>Arrows</dt><dd>Pan</dd></div>
+          <div><dt>T</dt><dd>Trails on / off</dd></div>
+          <div><dt>A</dt><dd>Arrows: off, selected, all</dd></div>
+          <div><dt>G</dt><dd>Ghost twin</dd></div>
+          <div><dt>N</dt><dd>Select the next mass</dd></div>
+          <div><dt>Del</dt><dd>Delete the selection</dd></div>
+          <div><dt>Esc</dt><dd>Close, deselect, back to Grab</dd></div>
+          <div><dt>\</dt><dd>Show or hide settings</dd></div>
+          <div><dt>?</dt><dd>This help</dd></div>
+        </dl>
+        <h3>About</h3>
+        <p>A browser port of simulation.py, a Python spring–mass simulator built on Newton’s second law, F = ma. As in the original, forces, integrators, collision rules and scenes are separate pieces you can swap. Units are SI; Orbits, Figure-eight, Charges and the Thermal lattice use scaled units (G = kₑ = k_B = 1). Everything runs in your browser.</p>
+        <p><a href="https://github.com/real-shafe/newton-force-law-sim" target="_blank" rel="noopener noreferrer">Source on GitHub ↗</a> · <a href="https://shafe.dev">Back to shafe.dev</a></p>
+        <p><button type="button" class="btn small" id="tipsAgain">Show tips again</button></p>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="shareBox" role="dialog" aria-modal="true" aria-labelledby="shareTitle" hidden>
+    <div class="modalCard narrow">
+      <div class="modalHead"><h2 id="shareTitle">Share this scene</h2><button type="button" class="iconBtn" id="shareClose" aria-label="Close">×</button></div>
+      <div class="modalBody">
+        <input class="shareUrl" id="shareUrl" readonly aria-label="Link">
+        <p class="fine" id="shareWhat"></p>
+        <p><button type="button" class="btn primary" id="shareCopy">Copy again</button></p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
